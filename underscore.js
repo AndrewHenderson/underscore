@@ -228,6 +228,35 @@
     if (key !== void 0 && key !== -1) return obj[key];
   };
 
+  // Recursive version of `find`:
+  // Return the first value which passes a truth test at any depth of the collection.
+  _.deepFind = function (obj, predicate, context) {
+    var result;
+    predicate = cb(predicate, context);
+
+    if (predicate(obj)) {
+      return obj;
+    }
+
+    for (var i in obj) {
+      if (obj.hasOwnProperty(i)) {
+        if (_.isArray(obj[i])) {
+          _.each(obj[i], function (_obj) {
+            if (result) {
+              return;
+            }
+            result = _.deepFind(_obj, predicate);
+          });
+        } else {
+          result = _.deepFind(obj[i], predicate);
+        }
+        if (result) {
+          return result;
+        }
+      }
+    }
+  };
+
   // Return all the elements that pass a truth test.
   // Aliased as `select`.
   _.filter = _.select = function(obj, predicate, context) {
@@ -237,6 +266,42 @@
       if (predicate(value, index, list)) results.push(value);
     });
     return results;
+  };
+
+  // Recursive version of `filter`:
+  // Return all the elements that pass a truth test at any depth of the collection.
+  _.deepFilter = function (obj, predicate, context) {
+    var results = [];
+    predicate = cb(predicate, context);
+
+    if (predicate(obj)) {
+      results.push(obj);
+    }
+
+    for (var i in obj) {
+      if (obj.hasOwnProperty(i)) {
+        if (_.isArray(obj[i])) {
+          _.each(obj[i], function (_obj) {
+            var result = _.deepFilter(_obj, predicate);
+            if (result) {
+              results.push(result);
+            }
+          });
+        } else if (_.isObject(obj[i])) {
+          var result = _.deepFilter(obj[i], predicate);
+          if (result) {
+            results.push(result);
+          }
+        } else {
+          if (predicate(obj[i])) {
+            results.push(obj[i]);
+          }
+        }
+      }
+    }
+    if (results.length) {
+      return _.flatten(results, true);
+    }
   };
 
   // Return all the elements for which a truth test fails.
@@ -298,10 +363,69 @@
     return _.filter(obj, _.matcher(attrs));
   };
 
+  // Recursive version of `where`: selecting only objects
+  // containing specific `key:value` pairs at any depth of the collection.
+  _.deepWhere = function (obj, attrs) {
+    var results = [];
+
+    if (_.hasEqual(obj, attrs)) {
+      results.push(obj);
+    }
+
+    for (var i in obj) {
+      if (obj.hasOwnProperty(i)) {
+        if (_.isArray(obj[i])) {
+          _.each(obj[i], function (_obj) {
+            var result = _.deepWhere(_obj, attrs);
+            if (result) {
+              results.push(result);
+            }
+          });
+        } else if (_.isObject(obj[i])) {
+          var result = _.deepWhere(obj[i], attrs);
+          if (result) {
+            results.push(result);
+          }
+        }
+      }
+    }
+    if (results.length) {
+      return _.flatten(results, true);
+    }
+  };
+
   // Convenience version of a common use case of `find`: getting the first object
   // containing specific `key:value` pairs.
   _.findWhere = function(obj, attrs) {
     return _.find(obj, _.matcher(attrs));
+  };
+
+  // Recursive version of `findWhere`: getting the first object
+  // containing specific `key:value` pairs at any depth of the collection.
+  _.deepFindWhere = function (obj, attrs) {
+    var result;
+
+    if (_.hasEqual(obj, attrs)) {
+      return obj;
+    }
+
+    for (var i in obj) {
+      if (obj.hasOwnProperty(i)) {
+        if (_.isArray(obj[i])) {
+          _.each(obj[i], function (_obj) {
+            if (result) {
+              return;
+            }
+            result = _.deepFindWhere(_obj, attrs);
+          });
+        } else if (_.isObject(obj[i])) {
+          result = _.deepFindWhere(obj[i], attrs);
+        }
+        if (result) {
+          return result;
+        }
+      }
+    }
   };
 
   // Return the maximum element (or element-based computation).
@@ -1337,6 +1461,16 @@
   // on itself (in other words, not on a prototype).
   _.has = function(obj, key) {
     return obj != null && hasOwnProperty.call(obj, key);
+  };
+
+  // Perform a deep comparison to check if a subset of two objects are equal.
+  _.hasEqual = function(a, b, keys) {
+    if (_.isUndefined(keys)) {
+      keys = _.keys(b);
+    }
+    a = _.pick(a, keys);
+    b = _.pick(b, keys);
+    return _.isEqual(a, b);
   };
 
   // Utility Functions
